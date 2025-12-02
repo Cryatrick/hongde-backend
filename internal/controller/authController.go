@@ -4,6 +4,8 @@ import(
 	"time"
 	// "fmt"
 	"net/http"
+	"crypto/md5"
+	"encoding/hex"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -13,9 +15,9 @@ import(
 	"hongde_backend/internal/service"
 )
 
-func Login(c *gin.Context) {
+func LoginAdmin(c *gin.Context) {
 	var loginBody struct {
-		Username string `json:"username"`
+		Username string `json:"email"`
 		Password string `json:"password"`
 		RememberMe string `json:"remember_me"`
 	}
@@ -26,23 +28,15 @@ func Login(c *gin.Context) {
 		})
 		return
 	}
-	user,err := service.LoginAdmin(loginBody.Username, loginBody.Password)
-	if err != nil {
+	hash := md5.Sum([]byte(loginBody.Password))
+	passwordHash := hex.EncodeToString(hash[:])
+	user,err := service.LoginAdmin(loginBody.Username, passwordHash)
+	if err != nil || user == nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status" : http.StatusUnauthorized,
 			"error": "Error Getting User",
 		})
 		return
-	}
-	if user == nil {
-		user,err = service.LoginSiswa(loginBody.Username, loginBody.Password)
-		if err != nil || user == nil {
-			c.JSON(http.StatusOK, gin.H{
-				"status" : http.StatusUnauthorized,
-				"error": "Error Getting User",
-			})
-			return
-		}
 	}
 
 	// Generate tokens
@@ -77,6 +71,141 @@ func Login(c *gin.Context) {
 		"status" :http.StatusOK,
 		"userId":user.UserId,
 		"userName":user.UserNama,
+		"roleId":user.UserRole,
+		"accessToken": accessToken,
+		"accessTokenExpiresAt":time.Now().Add(config.AccessTokenExpiry),
+		"refreshToken": refreshToken,
+	})
+	return
+}
+
+func LoginSiswa(c * gin.Context) {
+	var loginBody struct {
+		Username string `json:"user_id"`
+		Password string `json:"password"`
+		RememberMe string `json:"remember_me"`
+	}
+	if c.Bind(&loginBody) != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status" :http.StatusInternalServerError,
+			"error": "Failed To read Body",
+		})
+		return
+	}
+	hash := md5.Sum([]byte(loginBody.Password))
+	passwordHash := hex.EncodeToString(hash[:])
+	user,err := service.LoginSiswa(loginBody.Username, passwordHash)
+	if err != nil || user == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status" : http.StatusUnauthorized,
+			"error": "Error Getting User",
+		})
+		return
+	}
+	// Generate tokens
+	accessToken, _ := middleware.GenerateAccessToken(user.UserId)
+	refreshToken, err := middleware.GenerateRefreshToken()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status" :http.StatusInternalServerError,
+			"error": "Something Exploded "+err.Error(),
+		})
+		return
+	}
+	status := service.UpsertTokenData(user.UserId, bson.M {
+		"user_id":user.UserId,
+		"last_ip_address":c.ClientIP(),
+		"last_user_agent":c.GetHeader("User-Agent"),
+		"access_token":accessToken,
+		"refresh_token":refreshToken,
+		"refresh_token_expired":time.Now().Add(config.RefreshTokenExpiry),
+		"last_login":time.Now(),
+		"is_valid_token":"y",
+		"is_remember_me":loginBody.RememberMe,
+	})
+	if status == false {
+		c.JSON(http.StatusOK, gin.H{
+			"status" :http.StatusInternalServerError,
+			"error": "Failed To Save Token To Mongo DB",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status" :http.StatusOK,
+		"userId":user.UserId,
+		"userName":user.UserNama,
+		"roleId":user.UserRole,
+		"accessToken": accessToken,
+		"accessTokenExpiresAt":time.Now().Add(config.AccessTokenExpiry),
+		"refreshToken": refreshToken,
+	})
+	return
+}
+
+func LoginGoogle(c *gin.Context) {
+	var loginBody struct {
+		Username string `json:"email"`
+		RememberMe string `json:"remember_me"`
+	}
+	if c.Bind(&loginBody) != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status" :http.StatusInternalServerError,
+			"error": "Failed To read Body",
+		})
+		return
+	}
+	user,err := service.GetAdminData(loginBody.Username)
+	if err != nil || user == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status" : http.StatusUnauthorized,
+			"error": "Error Getting User",
+		})
+		return
+	}
+	if user == nil {
+		// user,err = service.GetSiswaEmail(loginBody.Username)
+		// if err != nil || user == nil {
+		// 	c.JSON(http.StatusOK, gin.H{
+		// 		"status" : http.StatusUnauthorized,
+		// 		"error": "Error Getting User",
+		// 	})
+		// 	return
+		// }
+	}
+
+	// Generate tokens
+	accessToken, _ := middleware.GenerateAccessToken(user.UserId)
+	refreshToken, err := middleware.GenerateRefreshToken()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status" :http.StatusInternalServerError,
+			"error": "Something Exploded "+err.Error(),
+		})
+		return
+	}
+	status := service.UpsertTokenData(user.UserId, bson.M {
+		"user_id":user.UserId,
+		"last_ip_address":c.ClientIP(),
+		"last_user_agent":c.GetHeader("User-Agent"),
+		"access_token":accessToken,
+		"refresh_token":refreshToken,
+		"refresh_token_expired":time.Now().Add(config.RefreshTokenExpiry),
+		"last_login":time.Now(),
+		"is_valid_token":"y",
+		"is_remember_me":loginBody.RememberMe,
+	})
+	if status == false {
+		c.JSON(http.StatusOK, gin.H{
+			"status" :http.StatusInternalServerError,
+			"error": "Failed To Save Token To Mongo DB",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status" :http.StatusOK,
+		"userId":user.UserId,
+		"userName":user.UserNama,
+		"roleId":user.UserRole,
 		"accessToken": accessToken,
 		"accessTokenExpiresAt":time.Now().Add(config.AccessTokenExpiry),
 		"refreshToken": refreshToken,
