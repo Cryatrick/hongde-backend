@@ -31,4 +31,33 @@ func InitRoutes(r *gin.RouterGroup) {
 
 		siswa.POST("/upload-excel-siswa",controller.ReadExcelSiswa)
 	}
+
+	// Soal
+	manajemenSoal := r.Group("/manajemen-soal")
+	{
+		manajemenSoal.Use(middleware.JWTAuthMiddleware(), middleware.LogUserActivity())
+		bankSoal := manajemenSoal.Group("/bank")
+		{
+			bankSoal.GET("", controller.GetBankSoal)
+			bankSoal.GET("/:bankId", controller.GetBankSoal)
+			bankSoal.DELETE("/:bankId", controller.DeleteBankSoal)
+
+			soalInput := &model.BankSoal{}
+			bankSoal.PUT("", middleware.InputValidator(soalInput), controller.InsertBankSoal)
+			bankSoal.PATCH("", middleware.InputValidator(soalInput), controller.UpdateBankSoal)
+		}
+
+		soalUjian := manajemenSoal.Group("/soal")
+		{
+			soalUjian.GET("", controller.GetSoalList)
+			soalUjian.GET("/:bankId", controller.GetSoalList)
+			soalUjian.GET("/:bankId/:soalId", controller.GetSoalList)
+			soalUjian.DELETE("/:soalId", controller.DeleteSoal)
+
+
+			soalUjian.POST("", controller.SaveSoal)
+			soalUjian.POST("/import-excel-soal",controller.ReadExcelSoal)
+			// soalUjian.PATCH("", controller.SaveSoal)
+		}
+	}
 }

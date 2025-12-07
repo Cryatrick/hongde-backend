@@ -25,7 +25,7 @@ func InputValidator(obj interface{}) gin.HandlerFunc {
 			// LogError(err, "Invalid JSON input")
 			c.JSON(http.StatusOK, gin.H{
 				"status" : http.StatusBadRequest,
-				"error": "Invalid input",
+				"error": "Invalid input : "+err.Error(),
 			})
 			c.Abort()
 			return

@@ -9,3 +9,5 @@ go get github.com/gin-contrib/cors
 go get go.mongodb.org/mongo-driver/v2/mongo
 go get github.com/joho/godotenv
 go get google.golang.org/api/idtoken
+go get github.com/kolesa-team/go-webp/encoder
+go get github.com/kolesa-team/go-webp/webp

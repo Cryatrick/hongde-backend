@@ -8,6 +8,7 @@ import(
 )
 
 var Prefix string
+var BaseUrl string
 
 func InitEnvronment() {
 	err := godotenv.Load()
@@ -20,4 +21,6 @@ func InitEnvronment() {
 	}else {
 		Prefix = "_PRODUCTION"
 	}
+
+	BaseUrl = os.Getenv("BASE_URL"+Prefix)
 }

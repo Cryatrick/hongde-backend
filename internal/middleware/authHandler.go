@@ -106,7 +106,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		// Get the Authorization header
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusOK, gin.H{
+			c.JSON(http.StatusUnauthorized, gin.H{
 				"status" : http.StatusUnauthorized,
 				"error": "Authorization token not provided",
 			})
@@ -117,7 +117,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		// Extract the token
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusOK, gin.H{
+			c.JSON(http.StatusUnauthorized, gin.H{
 				"status" : http.StatusUnauthorized,
 				"error": "Invalid token format",
 			})
@@ -130,7 +130,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		// Validate the token
 		claims, err := ValidateToken(token)
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
+			c.JSON(http.StatusUnauthorized, gin.H{
 				"status" : http.StatusUnauthorized,
 				"error": "Invalid or expired token",
 			})

@@ -17,7 +17,7 @@ import(
 	"hongde_backend/internal/model"
 	"hongde_backend/internal/thirdparty"
 )
- 
+
 func GetSiswa(c *gin.Context) {
 	siswaid := c.Param("siswaId")
 	if siswaid != "" {
@@ -57,7 +57,7 @@ func InsertSiswa(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status": http.StatusInternalServerError,
-			"error":  "Error detected : "+err.Error(),
+			"error":  "Error While Generating ID detected : "+err.Error(),
 		})
 		return
 	}
@@ -68,9 +68,18 @@ func InsertSiswa(c *gin.Context) {
 	userId,_ := c.Get("userID")
 	siswaInput.UserUpdate = userId.(string)
 	siswaInput.LastUpdate = time.Now().Format("2006-01-02 15:04:05")
+
+	statusInsert, err := service.InsertSiswa(siswaInput) 
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status": http.StatusInternalServerError,
+			"error":  "Error While Insert Data detected : "+err.Error(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"status": http.StatusOK,
-		"check_data":  siswaInput,
+		"statusInsert":  statusInsert,
 	})
 	return
 }
@@ -81,9 +90,17 @@ func UpdateSiswa(c *gin.Context) {
 	userId,_ := c.Get("userID")
 	siswaInput.UserUpdate,_ = userId.(string)
 	siswaInput.LastUpdate = time.Now().Format("2006-01-02 15:04:05")
+	statusUpdate, err := service.UpdateSiswa(siswaInput) 
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status": http.StatusInternalServerError,
+			"error":  "Error While Insert Data detected : "+err.Error(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"status": http.StatusOK,
-		"check_data":  siswaInput,
+		"statusUpdate":  statusUpdate,
 	})
 	return
 }
@@ -135,9 +152,18 @@ func ResetPasswordSiswa(c *gin.Context) {
 		UserUpdate:userId.(string),
 		LastUpdate:time.Now().Format("2006-01-02 15:04:05"),
 	}
+	statusUpdate, err := service.UpdateSiswa(&siswaData) 
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status": http.StatusInternalServerError,
+			"error":  "Error While Update Data detected : "+err.Error(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"status": http.StatusOK,
-		"check_data":  siswaData,
+		"newPassword":newPassword,
+		"statusUpdate":  statusUpdate,
 	})
 	return
 }
@@ -187,7 +213,7 @@ func ReadExcelSiswa(c *gin.Context) {
 		})
 		return
 	}
-	excelHeader, excelData, err := thirdparty.ReadExcelFile(sheetName, localFilePath)
+	_, excelData, err := thirdparty.ReadExcelFile(sheetName, localFilePath)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  http.StatusInternalServerError,
@@ -209,10 +235,10 @@ func ReadExcelSiswa(c *gin.Context) {
 	userId,_ := c.Get("userID")
 
 	for index, excelRow := range excelData {
-		if excelRow["Nama Siswa"].(string) == "" || excelRow["Email Siswa"].(string) == "" || excelRow["Jenis Identitas"].(string) == "" || excelRow["Nomor Identitas"].(string) == "" || excelRow["Tempat Lahir"].(string) == "" || excelRow["Tanggal Lahir"].(string) == "" || excelRow["Tempat Tinggal"].(string) == "" || excelRow["No Kontak"].(string) == "" || excelRow["Jenis Siswa"].(string) == "" {
+		if excelRow["Nama Siswa"] == nil || excelRow["Email Siswa"] == nil || excelRow["Jenis Identitas"] == nil || excelRow["No Identitas"] == nil || excelRow["Tempat Lahir"] == nil || excelRow["Tanggal Lahir"] == nil || excelRow["Tempat Tinggal"] == nil || excelRow["No Kontak"] == nil || excelRow["Jenis Siswa"] == nil {
 			c.JSON(http.StatusOK, gin.H{
 				"status": http.StatusInternalServerError,
-				"error":  "Detected Null For Required Field On Row - "+strconv.Itoa(index),
+				"error":  "Detected Null For Required Field On Row - "+strconv.Itoa(index+1),
 			})
 			return
 		}
@@ -223,17 +249,16 @@ func ReadExcelSiswa(c *gin.Context) {
 		passwordHash := hex.EncodeToString(hash[:])
 		siswaRow.PasswordSiswa = passwordHash
 
+		parsedTime,_ := time.Parse("01-02-06",excelRow["Tanggal Lahir"].(string))
+
 
 		siswaRow.NamaSiswa = excelRow["Nama Siswa"].(string)
 		siswaRow.EmailSiswa = excelRow["Email Siswa"].(string)
-		if excelRow["Nama Mandarin"].(string) != "" {
-			siswaRow.NamaMandarin.Valid = true
-			siswaRow.NamaMandarin.Str = excelRow["Nama Mandarin"].(string)
-		}
+		siswaRow.NamaMandarin = excelRow["Nama Mandarin"].(string)
 		siswaRow.JenisIdentitas = excelRow["Jenis Identitas"].(string)
 		siswaRow.NoIdentitas = excelRow["No Identitas"].(string)
 		siswaRow.TempatLahir = excelRow["Tempat Lahir"].(string)
-		siswaRow.TanggalLahir = excelRow["Tanggal Lahir"].(string)
+		siswaRow.TanggalLahir = parsedTime.Format("2006-01-02")
 		siswaRow.NoKontak = excelRow["No Kontak"].(string)
 		siswaRow.JenisSiswa = excelRow["Jenis Siswa"].(string)
 
@@ -254,11 +279,19 @@ func ReadExcelSiswa(c *gin.Context) {
 		})
 		return
 	}
+ 	insertStatus, err := service.InsertBulkSiswa(insertSiswaList)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status": http.StatusInternalServerError,
+			"error":  "Error While Inserting Siswa : "+err.Error(),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"status":  http.StatusOK,
-		"message": "Check If Excel Data Is Right",
+		"insertStatus":insertStatus,
 		"excelData": gin.H{
-			"header": excelHeader,
 			"data":   insertSiswaList,
 		},
 	})

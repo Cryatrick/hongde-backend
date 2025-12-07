@@ -15,6 +15,8 @@ func SetupRouter() *gin.Engine {
 	// }
 	r := gin.Default()
 
+	r.Static("/web/soal_images", "./web/soal_images")
+
 	// CORS middleware
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"}, // Frontend origin

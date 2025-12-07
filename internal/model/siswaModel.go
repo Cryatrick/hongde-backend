@@ -1,10 +1,10 @@
 package model
 
 type SiswaList struct{
-	SiswaId string
+	SiswaId string `json:"siswa_id"`
 	NamaSiswa string `json:"nama_siswa",validate:"required"`
 	EmailSiswa string `json:"email_siswa",validate:"required"`
-	NamaMandarin NullString `json:"nama_mandarin"`
+	NamaMandarin string `json:"nama_mandarin"`
 	JenisIdentitas string `json:"jenis_identitas", validate:"required"`
 	NoIdentitas string `json:"no_identitas", validate:"required"`
 	TempatLahir string `json:"tempat_lahir", validate:"required"`
