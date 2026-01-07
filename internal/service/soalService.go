@@ -13,7 +13,7 @@ import(
 
 // Function Untuk Bank Soal
 func GetBankSoal() ([]model.BankSoal, error) {
-	QueryData := `SELECT bs_id, bs_namabank, COUNT(soal_id) AS total_soal, bs_userupdate, bs_lastupdate FROM hd_banksoal LEFT JOIN hd_soalujian ON hd_soalujian.soal_bank = hd_banksoal.bs_id WHERE bs_isdelete = "n" `
+	QueryData := `SELECT bs_id, bs_namabank,bs_tingkatsoal, COUNT(soal_id) AS total_soal, bs_userupdate, bs_lastupdate FROM hd_banksoal LEFT JOIN hd_soalujian ON hd_soalujian.soal_bank = hd_banksoal.bs_id WHERE bs_isdelete = "n" `
 	var returnData []model.BankSoal
 
 	rows, err := database.DbMain.Query(QueryData)
@@ -26,9 +26,10 @@ func GetBankSoal() ([]model.BankSoal, error) {
 		var rowData model.BankSoal
 		var checkId model.NullInt
 		var checkNama model.NullString
+		var checkTingkat model.NullString
 		var checkUserupdate model.NullString
 		var checkLastupdate model.NullString
-		err = rows.Scan(&checkId,&checkNama, &rowData.JumlahSoal, &checkUserupdate, &checkLastupdate)
+		err = rows.Scan(&checkId,&checkNama, &checkTingkat, &rowData.JumlahSoal, &checkUserupdate, &checkLastupdate)
 		if err != nil {
 			middleware.LogError(err,"Data Scan Error")
 			return nil,err
@@ -36,6 +37,7 @@ func GetBankSoal() ([]model.BankSoal, error) {
 		if checkId.Valid == true {
 			rowData.BankId = checkId.Int
 			rowData.NamaBank = checkNama.Str
+			rowData.TingkatBank = checkTingkat.Str
 			rowData.UserUpdate = checkUserupdate.Str
 			rowData.LastUpdate = checkLastupdate.Str
 			returnData = append(returnData, rowData)
@@ -47,9 +49,9 @@ func GetBankSoal() ([]model.BankSoal, error) {
 }
 
 func GetBankId(idBank string)(*model.BankSoal, error) {
-	row := database.DbMain.QueryRow(`SELECT bs_id, bs_namabank, COUNT(soal_id) AS total_soal, bs_userupdate, bs_lastupdate FROM hd_banksoal LEFT JOIN hd_soalujian ON hd_soalujian.soal_bank = hd_banksoal.bs_id WHERE bs_id = ? AND bs_isdelete = "n"`,idBank)
+	row := database.DbMain.QueryRow(`SELECT bs_id, bs_namabank,bs_tingkatsoal, COUNT(soal_id) AS total_soal, bs_userupdate, bs_lastupdate FROM hd_banksoal LEFT JOIN hd_soalujian ON hd_soalujian.soal_bank = hd_banksoal.bs_id WHERE bs_id = ? AND bs_isdelete = "n"`,idBank)
 	var returnData = &model.BankSoal{}
-	err := row.Scan(&returnData.BankId,&returnData.NamaBank, &returnData.JumlahSoal, &returnData.UserUpdate, &returnData.LastUpdate)
+	err := row.Scan(&returnData.BankId,&returnData.NamaBank,&returnData.TingkatBank, &returnData.JumlahSoal, &returnData.UserUpdate, &returnData.LastUpdate)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -63,8 +65,8 @@ func GetBankId(idBank string)(*model.BankSoal, error) {
 }
 
 func InsertBankSoal(bankData *model.BankSoal)(bool, error) {
-	QueryInsert := `INSERT INTO hd_banksoal (bs_namabank, bs_userupdate, bs_lastupdate, bs_isdelete) VALUES(?,?,?,?)`
-	_, err := database.DbMain.Exec(QueryInsert, bankData.NamaBank,bankData.UserUpdate,bankData.LastUpdate,"n")
+	QueryInsert := `INSERT INTO hd_banksoal (bs_namabank,bs_tingkatsoal, bs_userupdate, bs_lastupdate, bs_isdelete) VALUES(?,?,?,?,?)`
+	_, err := database.DbMain.Exec(QueryInsert, bankData.NamaBank, bankData.TingkatBank,bankData.UserUpdate,bankData.LastUpdate,"n")
 	if err != nil {
 		middleware.LogError(err, "Insert Data Failed")
 		return false, err
@@ -83,6 +85,13 @@ func UpdateBankSoal(bankData *model.BankSoal) (bool,error) {
 		}
 		UpdateString += `bs_namabank = ? `
 		args = append(args,bankData.NamaBank)
+	}
+	if bankData.TingkatBank != "" {
+		if UpdateString != "" {
+			UpdateString += `, `
+		}
+		UpdateString += `bs_tingkatsoal = ? `
+		args = append(args,bankData.TingkatBank)
 	}
 	if bankData.UserUpdate != "" {
 		if UpdateString != "" {
@@ -185,6 +194,40 @@ func GetSoalBank(idBank string)([]model.SoalList, error) {
 			rowData.GambarD = BuildImageURL(rowData.GambarD)
 		}
 		returnDataList = append(returnDataList,rowData)
+	}
+	return returnDataList,nil
+}
+func GetSoalIdArray(idBank string, limit string, offset string)([]int , error) {
+	Query := `SELECT soal_id FROM hd_soalujian WHERE soal_is_delete = "n"`
+	var args []interface{}
+	if idBank != `` {
+		Query = Query + " AND soal_bank = ?"
+		args  = append(args,idBank)
+	}
+	Query = Query + ` ORDER BY soal_urutan ASC`
+	if limit != "" {
+		Query = Query + " LIMIT ?"
+		args  = append(args,limit)	
+	}
+	if offset != "" {
+		Query = Query + " OFFSET ?"
+		args  = append(args,offset)	
+	}
+	rows, err := database.DbMain.Query(Query,args...)
+	if err != nil {
+		middleware.LogError(err,"Query Error")
+		return nil, err
+	}
+	defer rows.Close()
+	var returnDataList []int
+	for rows.Next() {
+		var soalId int
+		err = rows.Scan(&soalId)
+		if err != nil {
+			middleware.LogError(err,"Data Scan Error")
+			return nil,err
+		}
+		returnDataList = append(returnDataList,soalId)
 	}
 	return returnDataList,nil
 }
@@ -370,7 +413,7 @@ func DeleteSoalUjian(soalId string) (bool, error) {
 	}
 	return true, nil
 }
-func InsertBulkSoalujian(insertData []model.SoalList)(bool,string, error) {
+func InsertBulkSoalujian(insertData []model.SoalList)(bool, error) {
 	InsertQuery := "INSERT INTO hd_soalujian VALUES "
 	InsertPlaceholder := ""
 	InsertValues := []interface{}{}
@@ -386,9 +429,9 @@ func InsertBulkSoalujian(insertData []model.SoalList)(bool,string, error) {
 	_, err := database.DbMain.Exec(InsertQuery,InsertValues...)
 	if err != nil {
 		middleware.LogError(err, "Insert Batch Failed")
-		return false,InsertQuery, err
+		return false, err
 	}
-	return true,InsertQuery, nil
+	return true, nil
 }
 // End Function Untuk Soal
 

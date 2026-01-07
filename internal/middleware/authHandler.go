@@ -36,8 +36,8 @@ func GenerateAccessToken(userID string) (string, error) {
 		UserID: userID,
 		// Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(config.AccessTokenExpiry)), // Expiry time
-			IssuedAt:  jwt.NewNumericDate(time.Now()),                    // Issued at
+			ExpiresAt: jwt.NewNumericDate(time.Now().In(config.TimeZone).Add(config.AccessTokenExpiry)), // Expiry time
+			IssuedAt:  jwt.NewNumericDate(time.Now().In(config.TimeZone)),                    // Issued at
 			Issuer:"Hongde Backend",
 		},
 	}

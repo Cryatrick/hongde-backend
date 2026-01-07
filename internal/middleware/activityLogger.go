@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
+	"hongde_backend/internal/config"
 	"hongde_backend/internal/database"
 )
 
@@ -60,7 +61,7 @@ func LogUserActivity() gin.HandlerFunc {
 			"user_agent":c.GetHeader("User-Agent"),
 			"query_params": queryParams,
 			"request_body": requestBody,
-			"timestamp": time.Now(),
+			"timestamp": time.Now().In(config.TimeZone),
 		})
 
 		if err != nil {

@@ -60,4 +60,29 @@ func InitRoutes(r *gin.RouterGroup) {
 			// soalUjian.PATCH("", controller.SaveSoal)
 		}
 	}
+
+	// Jadwal Ujian
+	jadwalUjian := r.Group("/jadwal-ujian")
+	{
+		jadwalUjian.Use(middleware.JWTAuthMiddleware(), middleware.LogUserActivity())
+		jadwalUjian.GET("", controller.GetJadwalUjian)
+		jadwalUjian.GET("/:jadwalId", controller.GetJadwalUjian)
+		jadwalUjian.DELETE("/:jadwalId", controller.DeleteJadwalUjian)
+
+		jadwalInput := &model.JadwalUjian{}
+		jadwalUjian.PUT("", middleware.InputValidator(jadwalInput), controller.InsertJadwalUjian)
+		jadwalUjian.PATCH("", middleware.InputValidator(jadwalInput), controller.UpdateJadwalUjian)
+
+		jadwalUjian.POST("/reset-token", controller.ResetTokenJadwalUjian)
+	}
+
+	// Route For Ujian Dari Siswa
+	pesertaUjian := r.Group("/peserta-ujian")
+	{
+		pesertaUjian.Use(middleware.JWTAuthMiddleware(), middleware.LogUserActivity())
+
+		pesertaUjian.GET("/list-jadwal-ujian/:siswaId",controller.GetJadwalUjianSiswaToday)
+		pesertaUjian.POST("/proses-token-ujian",controller.ProcessTokenExan)
+		pesertaUjian.POST("/save-jawaban-peserta",controller.SaveJawabanPeserta)
+	}
 }

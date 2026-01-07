@@ -55,8 +55,8 @@ func LoginAdmin(c *gin.Context) {
 		"last_user_agent":c.GetHeader("User-Agent"),
 		"access_token":accessToken,
 		"refresh_token":refreshToken,
-		"refresh_token_expired":time.Now().Add(config.RefreshTokenExpiry),
-		"last_login":time.Now(),
+		"refresh_token_expired":time.Now().In(config.TimeZone).Add(config.RefreshTokenExpiry),
+		"last_login":time.Now().In(config.TimeZone),
 		"is_valid_token":"y",
 		"is_remember_me":loginBody.RememberMe,
 	})
@@ -73,7 +73,7 @@ func LoginAdmin(c *gin.Context) {
 		"userName":user.UserNama,
 		"roleId":user.UserRole,
 		"accessToken": accessToken,
-		"accessTokenExpiresAt":time.Now().Add(config.AccessTokenExpiry),
+		"accessTokenExpiresAt":time.Now().In(config.TimeZone).Add(config.AccessTokenExpiry),
 		"refreshToken": refreshToken,
 	})
 	return
@@ -118,8 +118,8 @@ func LoginSiswa(c * gin.Context) {
 		"last_user_agent":c.GetHeader("User-Agent"),
 		"access_token":accessToken,
 		"refresh_token":refreshToken,
-		"refresh_token_expired":time.Now().Add(config.RefreshTokenExpiry),
-		"last_login":time.Now(),
+		"refresh_token_expired":time.Now().In(config.TimeZone).Add(config.RefreshTokenExpiry),
+		"last_login":time.Now().In(config.TimeZone),
 		"is_valid_token":"y",
 		"is_remember_me":loginBody.RememberMe,
 	})
@@ -136,7 +136,7 @@ func LoginSiswa(c * gin.Context) {
 		"userName":user.UserNama,
 		"roleId":user.UserRole,
 		"accessToken": accessToken,
-		"accessTokenExpiresAt":time.Now().Add(config.AccessTokenExpiry),
+		"accessTokenExpiresAt":time.Now().In(config.TimeZone).Add(config.AccessTokenExpiry),
 		"refreshToken": refreshToken,
 	})
 	return
@@ -189,8 +189,8 @@ func LoginGoogle(c *gin.Context) {
 		"last_user_agent":c.GetHeader("User-Agent"),
 		"access_token":accessToken,
 		"refresh_token":refreshToken,
-		"refresh_token_expired":time.Now().Add(config.RefreshTokenExpiry),
-		"last_login":time.Now(),
+		"refresh_token_expired":time.Now().In(config.TimeZone).Add(config.RefreshTokenExpiry),
+		"last_login":time.Now().In(config.TimeZone),
 		"is_valid_token":"y",
 		"is_remember_me":loginBody.RememberMe,
 	})
@@ -207,7 +207,7 @@ func LoginGoogle(c *gin.Context) {
 		"userName":user.UserNama,
 		"roleId":user.UserRole,
 		"accessToken": accessToken,
-		"accessTokenExpiresAt":time.Now().Add(config.AccessTokenExpiry),
+		"accessTokenExpiresAt":time.Now().In(config.TimeZone).Add(config.AccessTokenExpiry),
 		"refreshToken": refreshToken,
 	})
 	return
@@ -233,7 +233,7 @@ func RefreshAccessToken (c *gin.Context) {
 		return
 	}
 	extendRefresh := false
-	if time.Now().After(storedToken.RefreshTokenExpiredAt){
+	if time.Now().In(config.TimeZone).After(storedToken.RefreshTokenExpiredAt){
 		if storedToken.IsRememberMe != "y" {
 			c.JSON(http.StatusOK, gin.H{
 				"status" :http.StatusUnauthorized,
@@ -246,7 +246,7 @@ func RefreshAccessToken (c *gin.Context) {
 	}
 	if extendRefresh == true {
 		func() {
-			_ = service.UpsertTokenData(storedToken.UserId, bson.M {"refresh_token_expired": time.Now().Add(config.RefreshTokenExpiry)})
+			_ = service.UpsertTokenData(storedToken.UserId, bson.M {"refresh_token_expired": time.Now().In(config.TimeZone).Add(config.RefreshTokenExpiry)})
 			return 
 		}()
 	}
@@ -259,6 +259,6 @@ func RefreshAccessToken (c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status" :http.StatusOK,
 		"accessToken": newAccessToken,
-		"accessTokenExpiresAt":time.Now().Add(config.AccessTokenExpiry),
+		"accessTokenExpiresAt":time.Now().In(config.TimeZone).Add(config.AccessTokenExpiry),
 	})
 }

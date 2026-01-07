@@ -12,6 +12,7 @@ import(
 	"encoding/hex"
 	"github.com/gin-gonic/gin"
 
+	"hongde_backend/internal/config"
 	"hongde_backend/internal/middleware"
 	"hongde_backend/internal/service"
 	"hongde_backend/internal/model"
@@ -67,7 +68,7 @@ func InsertSiswa(c *gin.Context) {
 	siswaInput.PasswordSiswa = passwordHash
 	userId,_ := c.Get("userID")
 	siswaInput.UserUpdate = userId.(string)
-	siswaInput.LastUpdate = time.Now().Format("2006-01-02 15:04:05")
+	siswaInput.LastUpdate = time.Now().In(config.TimeZone).Format("2006-01-02 15:04:05")
 
 	statusInsert, err := service.InsertSiswa(siswaInput) 
 	if err != nil {
@@ -89,12 +90,12 @@ func UpdateSiswa(c *gin.Context) {
 	siswaInput := validatedInput.(*model.SiswaList)
 	userId,_ := c.Get("userID")
 	siswaInput.UserUpdate,_ = userId.(string)
-	siswaInput.LastUpdate = time.Now().Format("2006-01-02 15:04:05")
+	siswaInput.LastUpdate = time.Now().In(config.TimeZone).Format("2006-01-02 15:04:05")
 	statusUpdate, err := service.UpdateSiswa(siswaInput) 
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status": http.StatusInternalServerError,
-			"error":  "Error While Insert Data detected : "+err.Error(),
+			"error":  "Error While Update Data detected : "+err.Error(),
 		})
 		return
 	}
@@ -150,7 +151,7 @@ func ResetPasswordSiswa(c *gin.Context) {
 		SiswaId:PasswordData.SiswaId,
 		PasswordSiswa:passwordHash,
 		UserUpdate:userId.(string),
-		LastUpdate:time.Now().Format("2006-01-02 15:04:05"),
+		LastUpdate:time.Now().In(config.TimeZone).Format("2006-01-02 15:04:05"),
 	}
 	statusUpdate, err := service.UpdateSiswa(&siswaData) 
 	if err != nil {
@@ -263,7 +264,7 @@ func ReadExcelSiswa(c *gin.Context) {
 		siswaRow.JenisSiswa = excelRow["Jenis Siswa"].(string)
 
 		siswaRow.UserUpdate,_ = userId.(string)
-		siswaRow.LastUpdate = time.Now().Format("2006-01-02 15:04:05")
+		siswaRow.LastUpdate = time.Now().In(config.TimeZone).Format("2006-01-02 15:04:05")
 
 		insertSiswaList = append(insertSiswaList,siswaRow)
 

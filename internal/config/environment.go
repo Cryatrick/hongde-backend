@@ -3,12 +3,14 @@ package config
 import(
 	"os"
 	"log"
+	"time"
 
 	"github.com/joho/godotenv"
 )
 
 var Prefix string
 var BaseUrl string
+var TimeZone *time.Location
 
 func InitEnvronment() {
 	err := godotenv.Load()
@@ -23,4 +25,9 @@ func InitEnvronment() {
 	}
 
 	BaseUrl = os.Getenv("BASE_URL"+Prefix)
+
+    TimeZone, err = time.LoadLocation("Asia/Jakarta")
+    if err != nil {
+        panic("failed to load WIB timezone")
+    }
 }

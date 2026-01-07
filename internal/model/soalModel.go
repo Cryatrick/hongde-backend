@@ -3,6 +3,7 @@ package model
 type BankSoal struct {
 	BankId int `json:"bank_id"`
 	NamaBank string `json:"nama_bank", validate:"required"`
+	TingkatBank string `json:"tingkat_bank", validate:"required"`
 	JumlahSoal int 
 	UserUpdate string 
 	LastUpdate string

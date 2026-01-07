@@ -6,6 +6,7 @@ import(
 	"strconv"
 	"time"
 
+	"hongde_backend/internal/config"
 	"hongde_backend/internal/model"
 	"hongde_backend/internal/database"
 	"hongde_backend/internal/middleware"
@@ -66,7 +67,7 @@ func GetAllSiswa()([]model.SiswaList,error) {
 }
 
 func GenerateSiswaId() (string, error) {
-	codeId := time.Now().Format("0601")
+	codeId := time.Now().In(config.TimeZone).Format("0601")
 
 	var lastNumber model.NullString
 	QueryData := `SELECT MAX((REPLACE(hd_siswa.sw_id,?,''))) as total FROM hd_siswa WHERE sw_id LIKE ?`

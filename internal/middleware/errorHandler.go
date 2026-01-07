@@ -7,6 +7,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 
+	"hongde_backend/internal/config"
 	"hongde_backend/internal/database"
 )
 
@@ -22,7 +23,7 @@ func LogError(err error, errContext string) {
 	errorCollection := database.DbMongo.Collection("error_lists")
 	// Log activity
 	_, _ = errorCollection.InsertOne(context.TODO(), bson.M{
-		"timestamp": time.Now(),
+		"timestamp": time.Now().In(config.TimeZone),
 		"error_message":err.Error(),
 		"context":errContext,
 		"affected_file":file,

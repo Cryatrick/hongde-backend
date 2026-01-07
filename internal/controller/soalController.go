@@ -12,6 +12,7 @@ import(
 	"net/http"
 	"github.com/gin-gonic/gin"
 
+	"hongde_backend/internal/config"
 	"hongde_backend/internal/service"
 	"hongde_backend/internal/model"
 	"hongde_backend/internal/middleware"
@@ -55,7 +56,7 @@ func InsertBankSoal(c *gin.Context) {
 
 	userId,_ := c.Get("userID")
 	bankInput.UserUpdate = userId.(string)
-	bankInput.LastUpdate = time.Now().Format("2006-01-02 15:04:05")
+	bankInput.LastUpdate = time.Now().In(config.TimeZone).Format("2006-01-02 15:04:05")
 
 	statusInsert, err := service.InsertBankSoal(bankInput) 
 	if err != nil {
@@ -76,12 +77,12 @@ func UpdateBankSoal(c *gin.Context) {
 	bankInput := validatedInput.(*model.BankSoal)
 	userId,_ := c.Get("userID")
 	bankInput.UserUpdate,_ = userId.(string)
-	bankInput.LastUpdate = time.Now().Format("2006-01-02 15:04:05")
+	bankInput.LastUpdate = time.Now().In(config.TimeZone).Format("2006-01-02 15:04:05")
 	statusUpdate, err := service.UpdateBankSoal(bankInput) 
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status": http.StatusInternalServerError,
-			"error":  "Error While Insert Data detected : "+err.Error(),
+			"error":  "Error While Update Data detected : "+err.Error(),
 		})
 		return
 	}
@@ -419,7 +420,7 @@ func SaveSoal(c *gin.Context) {
 		BobotSoal:floatBobot,
 		TipeSoal:tipeSoal,
 		UserUpdate : userId.(string),
-		LastUpdate : time.Now().Format("2006-01-02 15:04:05"),
+		LastUpdate : time.Now().In(config.TimeZone).Format("2006-01-02 15:04:05"),
 	}
 	var processResult bool
 	if queryType == "insert" {
@@ -566,7 +567,7 @@ func ReadExcelSoal(c *gin.Context) {
 		soalRow.BobotSoal,_ = strconv.ParseFloat(excelRow["Bobot Benar"].(string),64)
 		soalRow.TipeSoal = "pilihan_ganda"
 		soalRow.UserUpdate,_ = userId.(string)
-		soalRow.LastUpdate = time.Now().Format("2006-01-02 15:04:05")
+		soalRow.LastUpdate = time.Now().In(config.TimeZone).Format("2006-01-02 15:04:05")
 
 		insertSoalList = append(insertSoalList,soalRow)
 
@@ -608,7 +609,7 @@ func ReadExcelSoal(c *gin.Context) {
 		soalRow.BobotSoal,_ = strconv.ParseFloat(rowTrue["Bobot Benar"].(string),64)
 		soalRow.TipeSoal = "true_false"
 		soalRow.UserUpdate,_ = userId.(string)
-		soalRow.LastUpdate = time.Now().Format("2006-01-02 15:04:05")
+		soalRow.LastUpdate = time.Now().In(config.TimeZone).Format("2006-01-02 15:04:05")
 
 		insertSoalList = append(insertSoalList,soalRow)
 
@@ -642,7 +643,7 @@ func ReadExcelSoal(c *gin.Context) {
 		soalRow.UrutanSoal,_ = strconv.Atoi(rowEssay["Urutan soal"].(string))
 		soalRow.TipeSoal = "essay"
 		soalRow.UserUpdate,_ = userId.(string)
-		soalRow.LastUpdate = time.Now().Format("2006-01-02 15:04:05")
+		soalRow.LastUpdate = time.Now().In(config.TimeZone).Format("2006-01-02 15:04:05")
 
 		insertSoalList = append(insertSoalList,soalRow)
 
@@ -660,11 +661,10 @@ func ReadExcelSoal(c *gin.Context) {
 		return
 	}
 
- 	insertStatus,InsertQuery, err := service.InsertBulkSoalujian(insertSoalList)
+ 	insertStatus, err := service.InsertBulkSoalujian(insertSoalList)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status": http.StatusInternalServerError,
-			"InsertQuery":InsertQuery,
 			"error":  "Error While Inserting Soal : "+err.Error(),
 		})
 		return

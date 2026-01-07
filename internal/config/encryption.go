@@ -11,8 +11,8 @@ var(
 )
 
 const (
-	AccessTokenExpiry  = time.Minute * 15   // 15 minutes
-	// AccessTokenExpiry  = time.Second * 15   // 15 second
+	// AccessTokenExpiry  = time.Minute * 15   // 15 minutes
+	AccessTokenExpiry  = time.Second * 15   // 15 second
 	RefreshTokenExpiry = time.Hour * 24 * 7 // 7 days
 )
 
