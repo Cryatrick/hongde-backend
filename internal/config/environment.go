@@ -10,6 +10,7 @@ import(
 
 var Prefix string
 var BaseUrl string
+var SoalPath string
 var TimeZone *time.Location
 
 func InitEnvronment() {
@@ -25,6 +26,7 @@ func InitEnvronment() {
 	}
 
 	BaseUrl = os.Getenv("BASE_URL"+Prefix)
+	SoalPath = os.Getenv("SOAL_PATH")
 
     TimeZone, err = time.LoadLocation("Asia/Jakarta")
     if err != nil {

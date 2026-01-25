@@ -4,6 +4,7 @@ import(
 	"fmt"
 	"database/sql"
 	"strconv"
+	"strings"
 	// "time"
 
 	"hongde_backend/internal/model"
@@ -13,7 +14,7 @@ import(
 
 // Function Untuk Bank Soal
 func GetBankSoal() ([]model.BankSoal, error) {
-	QueryData := `SELECT bs_id, bs_namabank,bs_tingkatsoal, COUNT(soal_id) AS total_soal, bs_userupdate, bs_lastupdate FROM hd_banksoal LEFT JOIN hd_soalujian ON hd_soalujian.soal_bank = hd_banksoal.bs_id WHERE bs_isdelete = "n" `
+	QueryData := `SELECT bs_id, bs_namabank,bs_tingkatsoal, COUNT(soal_id) AS total_soal, bs_userupdate, bs_lastupdate FROM hd_banksoal LEFT JOIN hd_soalujian ON hd_soalujian.soal_bank = hd_banksoal.bs_id WHERE bs_isdelete = "n" GROUP BY bs_id `
 	var returnData []model.BankSoal
 
 	rows, err := database.DbMain.Query(QueryData)
@@ -41,8 +42,6 @@ func GetBankSoal() ([]model.BankSoal, error) {
 			rowData.UserUpdate = checkUserupdate.Str
 			rowData.LastUpdate = checkLastupdate.Str
 			returnData = append(returnData, rowData)
-		}else {
-			break
 		}
 	}
 	return returnData,nil
@@ -162,6 +161,54 @@ func GetSoalBank(idBank string)([]model.SoalList, error) {
 	if idBank != `` {
 		Query = Query + " AND soal_bank = ?"
 		args  = append(args,idBank)
+	}
+	Query = Query + ` ORDER BY soal_urutan ASC`
+	rows, err := database.DbMain.Query(Query,args...)
+	if err != nil {
+		middleware.LogError(err,"Query Error")
+		return nil, err
+	}
+	defer rows.Close()
+	var returnDataList []model.SoalList
+	for rows.Next() {
+		var rowData model.SoalList
+		err = rows.Scan(&rowData.SoalId,&rowData.BankId, &rowData.GambarSoal, &rowData.PertanyaanSoal, &rowData.UrutanSoal, &rowData.GambarA, &rowData.JawabanA, &rowData.GambarB, &rowData.JawabanB, &rowData.GambarC, &rowData.JawabanC, &rowData.GambarD, &rowData.JawabanD, &rowData.JawabanBenar, &rowData.BobotSoal,&rowData.TipeSoal,&rowData.UserUpdate,&rowData.LastUpdate)
+		if err != nil {
+			middleware.LogError(err,"Data Scan Error")
+			return nil,err
+		}
+		if rowData.GambarSoal != "" {
+			rowData.GambarSoal = BuildImageURL(rowData.GambarSoal)
+		}
+		if rowData.GambarA != "" {
+			rowData.GambarA = BuildImageURL(rowData.GambarA)
+		}
+		if rowData.GambarB != "" {
+			rowData.GambarB = BuildImageURL(rowData.GambarB)
+		}
+		if rowData.GambarC != "" {
+			rowData.GambarC = BuildImageURL(rowData.GambarC)
+		}
+		if rowData.GambarD != "" {
+			rowData.GambarD = BuildImageURL(rowData.GambarD)
+		}
+		returnDataList = append(returnDataList,rowData)
+	}
+	return returnDataList,nil
+}
+func GetSoalDataInArray(usedId []string)([]model.SoalList,error) {
+	Query := `SELECT soal_id,soal_bank,soal_gambar_pertanyaan,soal_pertanyaan,soal_urutan,soal_gambarjwba,soal_jwba,soal_gambarjwbb,soal_jwbb,soal_gambarjwbc,soal_jwbc,soal_gambarjwbd,soal_jwbd,soal_jwbbenar,soal_bobot,soal_tipe,soal_userupdate,soal_lastupdate FROM hd_soalujian WHERE soal_is_delete = "n"`
+	var args []interface{}
+	conditionSoal := ""
+	if len(usedId) > 0 {
+		placeholder := strings.Repeat("?,",len(usedId))
+		placeholder = placeholder[:len(placeholder)-1]
+
+		conditionSoal += "soal_id IN ("+placeholder+")"
+		for _,params := range usedId {
+			args = append(args,params)
+		}
+		Query += " AND "+conditionSoal 
 	}
 	Query = Query + ` ORDER BY soal_urutan ASC`
 	rows, err := database.DbMain.Query(Query,args...)

@@ -1,12 +1,15 @@
 package controller
 
 import(
-	_ "fmt"
+	"fmt"
 	"time"
 	"os"
 	"path/filepath"
 	"strings"
 	"strconv"
+    "encoding/hex"
+    "crypto/hmac"
+    "crypto/sha256"
 
 	// IMPORTANT IMPORT FOR ALL CONTROLLER
 	"net/http"
@@ -147,9 +150,24 @@ func GetSoalList(c *gin.Context) {
 			})
 			return
 		}
+		var soalPilihanGanda []model.SoalList
+		var soalTrueFalse []model.SoalList
+		var soalEssay []model.SoalList
+		for _,rowData := range allSoal{
+			if rowData.TipeSoal == `pilihan_ganda` {
+				soalPilihanGanda = append(soalPilihanGanda,rowData)
+			}else if rowData.TipeSoal == `true_false` {
+				soalTrueFalse = append(soalTrueFalse,rowData)
+			}else if rowData.TipeSoal == `essay` {
+				soalEssay = append(soalEssay,rowData)
+			}
+		}
 		c.JSON(http.StatusOK, gin.H{
 			"status":    http.StatusOK,
-			"all_soal": allSoal,
+			// "all_soal": allSoal,
+			"soal_pilihan_ganda":soalPilihanGanda,
+			"soal_true_false":soalTrueFalse,
+			"soal_essay":soalEssay,
 		})
 		return
 	}
@@ -162,6 +180,7 @@ func SaveSoal(c *gin.Context) {
 	bobotSoal := c.PostForm("bobot_soal")
 	tipeSoal := c.PostForm("tipe_soal")
 	queryType := "update"
+	// oldSoal := service.GetSingleSoal(soalId)
 
 	if bankId == "" || urutanSoal == "" || jawabanBenar == "" || bobotSoal == "" || tipeSoal == "" {
 		c.JSON(http.StatusOK, gin.H{
@@ -190,6 +209,7 @@ func SaveSoal(c *gin.Context) {
 	pertanyaanGambar := "n"
 	fileNameGambarPertanyaan := ""
 	pertanyaanText := c.PostForm("pertanyaan_text")
+	oldPertanyaanGambar := c.PostForm("old_pertanyaan_gambar")
 	pertanyaanFile, err :=c.FormFile("pertanyaan_gambar")
 	if err == nil  {
 		ext := strings.ToLower(filepath.Ext(pertanyaanFile.Filename))
@@ -210,7 +230,7 @@ func SaveSoal(c *gin.Context) {
 			return
 		}
 		// Save the file locally
-		resultName, err := thirdparty.SaveImageAsWebp(f,soalId+"_SOAL", "./web/soal_images")
+		resultName, err := thirdparty.SaveImageAsWebp(f,soalId+"_SOAL", config.SoalPath)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"status": http.StatusInternalServerError,
@@ -220,6 +240,9 @@ func SaveSoal(c *gin.Context) {
 		}
 		pertanyaanGambar = "y"
 		fileNameGambarPertanyaan = resultName
+	}
+	if queryType == "update" && oldPertanyaanGambar != "" {
+		fileNameGambarPertanyaan = soalId+"_SOAL.webp"
 	}
 	if pertanyaanGambar == "n" && pertanyaanText == "" {
 		c.JSON(http.StatusOK, gin.H{
@@ -232,6 +255,7 @@ func SaveSoal(c *gin.Context) {
 	soalAGambar := "n"
 	fileNameGambarSoalA := ""
 	soalAText := c.PostForm("soal_a_text")
+	oldSoalAGambar := c.PostForm("old_soal_a_gambar")
 	soalAFile, err :=c.FormFile("soal_a_gambar")
 	if err == nil  {
 		ext := strings.ToLower(filepath.Ext(soalAFile.Filename))
@@ -252,7 +276,7 @@ func SaveSoal(c *gin.Context) {
 			return
 		}
 		// Save the file locally
-		resultName, err := thirdparty.SaveImageAsWebp(f,soalId+"_JWBA", "./web/soal_images")
+		resultName, err := thirdparty.SaveImageAsWebp(f,soalId+"_JWBA", config.SoalPath)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"status": http.StatusInternalServerError,
@@ -262,6 +286,9 @@ func SaveSoal(c *gin.Context) {
 		}
 		soalAGambar = "y"
 		fileNameGambarSoalA = resultName
+	}
+	if queryType == "update" && oldSoalAGambar != "" {
+		fileNameGambarSoalA = soalId+"_JWBA.webp"
 	}
 	if soalAGambar == "n" && soalAText == "" && tipeSoal != "essay" {
 		c.JSON(http.StatusOK, gin.H{
@@ -274,6 +301,7 @@ func SaveSoal(c *gin.Context) {
 	soalBGambar := "n"
 	fileNameGambarSoalB := ""
 	soalBText := c.PostForm("soal_b_text")
+	oldSoalBGambar := c.PostForm("old_soal_b_gambar")
 	soalBFile, err :=c.FormFile("soal_b_gambar")
 	if err == nil  {
 		ext := strings.ToLower(filepath.Ext(soalBFile.Filename))
@@ -294,7 +322,7 @@ func SaveSoal(c *gin.Context) {
 			return
 		}
 		// Save the file locally
-		resultName, err := thirdparty.SaveImageAsWebp(f,soalId+"_JWBB", "./web/soal_images")
+		resultName, err := thirdparty.SaveImageAsWebp(f,soalId+"_JWBB", config.SoalPath)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"status": http.StatusInternalServerError,
@@ -304,6 +332,9 @@ func SaveSoal(c *gin.Context) {
 		}
 		soalBGambar = "y"
 		fileNameGambarSoalB = resultName
+	}
+	if queryType == "update" && oldSoalBGambar != "" {
+		fileNameGambarSoalB = soalId+"_JWBB.webp"
 	}
 	if soalBGambar == "n" && soalBText == "" && tipeSoal != "essay" {
 		c.JSON(http.StatusOK, gin.H{
@@ -316,6 +347,7 @@ func SaveSoal(c *gin.Context) {
 	soalCGambar := "n"
 	fileNameGambarSoalC := ""
 	soalCText := c.PostForm("soal_c_text")
+	oldSoalCGambar := c.PostForm("old_soal_c_gambar")
 	soalCFile, err :=c.FormFile("soal_c_gambar")
 	if err == nil  {
 		ext := strings.ToLower(filepath.Ext(soalCFile.Filename))
@@ -336,7 +368,7 @@ func SaveSoal(c *gin.Context) {
 			return
 		}
 		// Save the file locally
-		resultName, err := thirdparty.SaveImageAsWebp(f,soalId+"_JWBC", "./web/soal_images")
+		resultName, err := thirdparty.SaveImageAsWebp(f,soalId+"_JWBC", config.SoalPath)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"status": http.StatusInternalServerError,
@@ -346,6 +378,9 @@ func SaveSoal(c *gin.Context) {
 		}
 		soalCGambar = "y"
 		fileNameGambarSoalC = resultName
+	}
+	if queryType == "update" && oldSoalCGambar != "" {
+		fileNameGambarSoalC = soalId+"_JWBC.webp"
 	}
 	if soalCGambar == "n" && soalCText == "" && tipeSoal == "pilihan_ganda"  {
 		c.JSON(http.StatusOK, gin.H{
@@ -358,6 +393,7 @@ func SaveSoal(c *gin.Context) {
 	soalDGambar := "n"
 	fileNameGambarSoalD := ""
 	soalDText := c.PostForm("soal_d_text")
+	oldSoalDGambar := c.PostForm("old_soal_d_gambar")
 	soalDFile, err :=c.FormFile("soal_d_gambar")
 	if err == nil  {
 		ext := strings.ToLower(filepath.Ext(soalDFile.Filename))
@@ -378,7 +414,7 @@ func SaveSoal(c *gin.Context) {
 			return
 		}
 		// Save the file locally
-		resultName, err := thirdparty.SaveImageAsWebp(f,soalId+"_JWBD", "./web/soal_images")
+		resultName, err := thirdparty.SaveImageAsWebp(f,soalId+"_JWBD", config.SoalPath)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"status": http.StatusInternalServerError,
@@ -388,6 +424,9 @@ func SaveSoal(c *gin.Context) {
 		}
 		soalDGambar = "y"
 		fileNameGambarSoalD = resultName
+	}
+	if queryType == "update" && oldSoalDGambar != "" {
+		fileNameGambarSoalD = soalId+"_JWBD.webp"
 	}
 	if soalDGambar == "n" && soalDText == "" && tipeSoal == "pilihan_ganda" {
 		c.JSON(http.StatusOK, gin.H{
@@ -402,6 +441,7 @@ func SaveSoal(c *gin.Context) {
 	intBankId,_ :=  strconv.Atoi(bankId)
 	intUrutan,_ :=  strconv.Atoi(urutanSoal)
 	floatBobot,_ :=  strconv.ParseFloat(bobotSoal,64)
+
 	soalData := model.SoalList{
 		SoalId:intId,
 		BankId:intBankId,
@@ -677,5 +717,27 @@ func ReadExcelSoal(c *gin.Context) {
 		},
 	})
 }
+func ServeSignedImage(c *gin.Context) {
+    filename := c.Param("filename")
 
+    exp, err := strconv.ParseInt(c.Query("exp"), 10, 64)
+    if err != nil || time.Now().Unix() > exp {
+        c.AbortWithStatus(http.StatusForbidden)
+        return
+    }
 
+    sig := c.Query("sig")
+    payload := fmt.Sprintf("%s:%d", filename, exp)
+
+    mac := hmac.New(sha256.New, []byte(config.ENCRYPTION_KEY))
+    mac.Write([]byte(payload))
+    expectedSig := hex.EncodeToString(mac.Sum(nil))
+
+    if !hmac.Equal([]byte(sig), []byte(expectedSig)) {
+        c.AbortWithStatus(http.StatusForbidden)
+        return
+    }
+
+    c.File(config.SoalPath + filename)
+}
+// End Function For Soal

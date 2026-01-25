@@ -14,6 +14,7 @@ func InitRoutes(r *gin.RouterGroup) {
 	r.POST("/auth/login-siswa", controller.LoginSiswa)
 	r.POST("/auth/google-login", controller.LoginGoogle)
 	r.POST("/refresh-access",middleware.LogUserActivity(), controller.RefreshAccessToken)
+	r.GET("/get-image/:filename",controller.ServeSignedImage)
 
 	// Siswa
 	siswa := r.Group("/siswa")
@@ -57,6 +58,7 @@ func InitRoutes(r *gin.RouterGroup) {
 
 			soalUjian.POST("", controller.SaveSoal)
 			soalUjian.POST("/import-excel-soal",controller.ReadExcelSoal)
+
 			// soalUjian.PATCH("", controller.SaveSoal)
 		}
 	}
@@ -84,5 +86,21 @@ func InitRoutes(r *gin.RouterGroup) {
 		pesertaUjian.GET("/list-jadwal-ujian/:siswaId",controller.GetJadwalUjianSiswaToday)
 		pesertaUjian.POST("/proses-token-ujian",controller.ProcessTokenExan)
 		pesertaUjian.POST("/save-jawaban-peserta",controller.SaveJawabanPeserta)
+		pesertaUjian.POST("/save-single-jawaban-peserta",controller.SaveSingleJawabanPeserta)
+		pesertaUjian.POST("/finalize-peserta-ujian",controller.FinalizePesertaUjian)
+	}
+
+	// Rout For Hasil Ujian
+	hasilUjian := r.Group("/hasil-ujian")
+	{
+		hasilUjian.Use(middleware.JWTAuthMiddleware(), middleware.LogUserActivity())
+
+		hasilUjian.GET("/detail-jadwal-ujian/:jadwalId",controller.GetDetailJadwalUjian)
+		hasilUjian.GET("/detail-peserta-ujian/:pesertaId",controller.DetailSingleSiswa)
+
+		hasilUjian.POST("/reset-manual-ujian",controller.FinishManualPeserta)
+		hasilUjian.POST("/save-penilaian-essay",controller.SavePenilaianEssay)
+		hasilUjian.POST("/save-penilaian-pilihan-ganda",controller.SavePenilaianOther)
+		hasilUjian.POST("/finalize-jadwal",controller.FinalizeJadwalUjian)
 	}
 }

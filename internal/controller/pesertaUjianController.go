@@ -103,21 +103,57 @@ func ProcessTokenExan(c *gin.Context) {
 		})
 		return
 	}
+	var usedSoalId []string
+	jawabanArray := make(map[string]string)
 	if checkPeserta != nil {
 		pesertaStartTime,_ := time.ParseInLocation("2006-01-02 15:04:05", checkPeserta.StartedAt, config.TimeZone)
 		canResumeExam,remainingDuration := CanResumeExam(ujianTimeFormat,jadwalData.DurasiUjian,pesertaStartTime,now, jadwalData.KetentuanWaktu)
 		if canResumeExam == false || checkPeserta.EndAt != "" {
+			if checkPeserta.EndAt == "" {
+				allSoalPeserta, err := service.GetJawabanPesertaWithSoalData(checkPeserta.PesertaId)
+				if err != nil {
+					c.JSON(http.StatusOK, gin.H{
+						"status": http.StatusInternalServerError,
+						"error":  "Error detected : "+err.Error(),
+					})
+					return
+				}
+				finishTime := pesertaStartTime.Add(time.Duration(jadwalData.DurasiUjian) * time.Minute).Format("2006-01-02 15:04:05")
+				_,err = service.FinalizePesertaUjian(checkPeserta.PesertaId,finishTime,allSoalPeserta)
+				if err != nil {
+					c.JSON(http.StatusOK, gin.H{
+						"status": http.StatusInternalServerError,
+						"error":  "Error detected : "+err.Error(),
+					})
+					return
+				}
+			}
 			c.JSON(http.StatusOK, gin.H{
 				"status": http.StatusInternalServerError,
 				"error":  "Tidak Bisa Melanjutkan Ujian Lagi",
 			})
 			return
 		}
+		for _,takenSoal := range checkPeserta.SoalArray{
+			usedSoalId = append(usedSoalId,strconv.Itoa(takenSoal.SoalId))
+			jawabanArray[strconv.Itoa(takenSoal.SoalId)] = takenSoal.JawabanSiswa
+		}
+		soalList,err := service.GetSoalDataInArray(usedSoalId)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"status": http.StatusInternalServerError,
+				"error":  "Error detected : "+err.Error(),
+			})
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"status":    http.StatusOK,
 			"jadwal_data":jadwalData,
 			"peserta_data": checkPeserta,
-			"sisa_waktu":remainingDuration,
+			"jawaban_array":jawabanArray,
+			"soal_list":soalList,
+			"sisa_waktu":remainingDuration.Minutes(),
 		})
 		return
 	}
@@ -161,6 +197,8 @@ func ProcessTokenExan(c *gin.Context) {
 		}
 	}
 	for index,soalId := range soalData {
+		usedSoalId = append(usedSoalId,strconv.Itoa(soalId))
+		jawabanArray[strconv.Itoa(soalId)] = ""
 		soalPeserta = append(soalPeserta,model.SoalPesertaUjian{
 			PesertaId:pesertaId,
 			SoalId:soalId,
@@ -190,10 +228,20 @@ func ProcessTokenExan(c *gin.Context) {
 		})
 		return
 	}
+	soalList,err := service.GetSoalDataInArray(usedSoalId)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status": http.StatusInternalServerError,
+			"error":  "Error detected : "+err.Error(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"status":    http.StatusOK,
 		"jadwal_data": jadwalData,
 		"peserta_data":pesertaData,
+		"soal_list":soalList,
+		"jawaban_array":jawabanArray,
 		"sisa_waktu":jadwalData.DurasiUjian,
 	})
 	return
@@ -228,6 +276,73 @@ func SaveJawabanPeserta(c *gin.Context) {
 	return
 }
 
+func SaveSingleJawabanPeserta(c *gin.Context) {
+	var postData struct {
+		PesertaId string `json:"peserta_id"`
+		SoalId string `json:"soal_id"`
+		SavedJawaban string `json:"saved_jawaban"`
+	}
+	if c.Bind(&postData) != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status" :http.StatusInternalServerError,
+			"error": "Failed To read Body",
+		})
+		return
+	}
+
+	updateStatus,err := service.SaveSingleJawabanPeserta(postData.PesertaId,postData.SoalId, postData.SavedJawaban)
+	if err != nil || updateStatus == false {
+		c.JSON(http.StatusOK, gin.H{
+			"status": http.StatusInternalServerError,
+			"error":  "Error detected : "+err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":    http.StatusOK,
+		"updateStatus": updateStatus,
+	})
+	return
+}
+
+func FinalizePesertaUjian(c *gin.Context) {
+	var postData struct {
+		PesertaId string `json:"peserta_id"`
+		// JawabanArray map[string]string `json:"jawaban_array"`
+	}
+
+	if c.Bind(&postData) != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status" :http.StatusInternalServerError,
+			"error": "Failed To read Body",
+		})
+		return
+	}
+	allSoalPeserta, err := service.GetJawabanPesertaWithSoalData(postData.PesertaId)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status": http.StatusInternalServerError,
+			"error":  "Error detected : "+err.Error(),
+		})
+		return
+	}
+	finishTime := time.Now().In(config.TimeZone).Format("2006-01-02 15:04:05")
+	updateStatus,err := service.FinalizePesertaUjian(postData.PesertaId,finishTime,allSoalPeserta)
+	if err != nil || updateStatus == false {
+		c.JSON(http.StatusOK, gin.H{
+			"status": http.StatusInternalServerError,
+			"error":  "Error detected : "+err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":    http.StatusOK,
+		"updateStatus": updateStatus,
+	})
+	return
+
+}
+
 func CheckExamTiming(startDate time.Time, examDuration int ,now time.Time,graceMinutes int) (isLate bool, isClosed bool) {
 	// fmt.Printf("Now :%v \n",now)
 	lateAt := startDate
@@ -258,14 +373,11 @@ func CanResumeExam(examStartAt time.Time,examDurationMin int,studentStartAt time
 	if validateType == "mulai_potong" {
 		actualEndAt = examEndAt
 	}
-	// if examEndAt.Before(actualEndAt) {
-		// 	actualEndAt = examEndAt
-		// }
 
-		if now.After(actualEndAt) {
-			return false, 0
-		}
-
-		remaining := actualEndAt.Sub(now)
-		return true, remaining
+	if now.After(actualEndAt) {
+		return false, 0
 	}
+
+	remaining := actualEndAt.Sub(now)
+	return true, remaining
+}

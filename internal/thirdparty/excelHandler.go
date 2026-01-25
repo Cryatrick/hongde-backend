@@ -159,7 +159,13 @@ func ReadExcelFile(sheetName,filePath string) ([]Header, []map[string]interface{
 	for rowIndex := 1; rowIndex < len(rows); rowIndex++ {
 		rowData := make(map[string]interface{})
 		for colIndex, header := range headers {
-			rowData[header.Text] = rows[rowIndex][colIndex]
+			var cellValue interface{} = nil
+			if colIndex < len(rows[rowIndex]) {
+				if rows[rowIndex][colIndex] != "" {
+					cellValue = rows[rowIndex][colIndex]
+				}
+			}
+			rowData[header.Text] = cellValue
 		}
 		data = append(data, rowData)
 	}

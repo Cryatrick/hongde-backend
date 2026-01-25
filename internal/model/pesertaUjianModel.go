@@ -9,7 +9,11 @@ type PesertaUjian struct{
 	StartedAt string
 	EndAt string
 	IsLate string
+	TotalRight int
+	TotalWaiting int
+	TotalWrong int
 	FinalScore float64
+	IsRecapped string
 	SoalArray []SoalPesertaUjian
 	UserUpdate string
 	LastUpdate string
@@ -18,7 +22,8 @@ type PesertaUjian struct{
 type SoalPesertaUjian struct {
 	PesertaId string
 	SoalId int
-	SoalData SoalList
 	UrutanSoal int
 	JawabanSiswa string
+	IsRight string
+	BobotSoal float64
 }
